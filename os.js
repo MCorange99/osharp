@@ -5,6 +5,9 @@ const process = require("process")
 const fs = require("fs")//.promises
 const util = require('util');
 const exec = util.promisify(require('child_process').exec);
+
+const sleep = (ms=1000) => new Promise(r => setTimeout(r, ms));
+
 let argv = process.argv
 let result
 let iota_counter = 0;
