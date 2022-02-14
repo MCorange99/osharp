@@ -1,0 +1,11 @@
+{
+  "name": "Osharp",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "MCorange",
+  "license": "MIT",
+  "dependencies": {
+    "child_process": "^1.0.2",
+    "util": "^0.12.4"
+  }
+}
