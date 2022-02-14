@@ -6,6 +6,11 @@ const fs = require("fs")//.promises
 const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 
+let config = {"config": {
+	"debug": process.env.debug || false
+}}
+config = config.config
+
 const sleep = (ms=1000) => new Promise(r => setTimeout(r, ms));
 
 let argv = process.argv
@@ -91,7 +96,7 @@ async function writeFile(filePath, text, mode='w'){
 		}
 	} else
 	if (mode == 'r'){
-		assert(false, "TODO: not implemented, reading files")
+		return fs.readFileSync(filePath, 'utf-8')
 	}
 
 }
@@ -165,6 +170,7 @@ async function comProg(prog, filePath){
 	writeFile(filePathAsm, "global _start\n")
 	writeFile(filePathAsm, "_start:\n")
 	for(i = 0; i < prog.length; i++){
+		
 		op = prog[i];
 		assert(COUNT_OPS == 4, "Exhaustive handling of operations in compilation")
 		if (op[0] == OP_PUSH){
@@ -182,8 +188,8 @@ async function comProg(prog, filePath){
 			writeFile(filePathAsm, `	;; -- minus --\n`)
 			writeFile(filePathAsm, `	pop rax\n`)
 			writeFile(filePathAsm, `	pop rbx\n`)
-			writeFile(filePathAsm, `	sub rax, rbx\n`)
-			writeFile(filePathAsm, `	push rax\n`)
+			writeFile(filePathAsm, `	sub rbx, rax\n`)
+			writeFile(filePathAsm, `	push rbx\n`)
 		} else
 		if (op[0] == OP_DUMP){
 			writeFile(filePathAsm, `	;; -- dump --\n`)
@@ -202,6 +208,7 @@ async function comProg(prog, filePath){
 		await runCmd(`ld -o ${filePathExec} ${filePathObj}`)
 		
 		await runCmd(`chmod +x ${filePathExec}`)
+		//if (!config.debug) await runCmd(`rm -f ${filePathAsm} ${filePathObj}`)
 }
 
 
@@ -216,38 +223,76 @@ async function runCmd(cmd) {
 	}
 }
 
-let program=[
-		fpush(34),
-		fpush(35),
-		plus(),
-		dump()
-	]
+// let program=[
+// 		fpush(34),
+// 		fpush(35),
+// 		plus(),
+// 		dump()
+// 	]
 
+function parseWordAsOp(word){
+	if (word == '+'){
+		return plus()
+	} else
+	if (word == '-') {
+		return minus()
+	} else 
+	if (word == '.') {
+		return dump()
+	} else {
+		return fpush(parseInt(word))
+	}
+}
+
+async function loadProgFromFile(filePath){
+	let prog = await writeFile(filePath, '', 'r')
+	let i
+	let ret = []
+	const file = removeEmpty(prog.replace(/\n/g, " ").split(' '))
+	for (i = 0; i< file.length; i++){
+		ret.push(parseWordAsOp(removeEmpty(prog.replace(/\n/g, " ").split(' '))[i]))
+	}
+	return ret
+}
 
 function usage(comp = "os"){
-console.log(`USAGE: ${comp} <SUBCOMMAND> [ARGS]
+console.log(`USAGE: ${comp} <SUBCOMMAND> <FILE>
 SUBCOMMANDS:
-	sim Simulate the program.
-	com Compile the program.
+  sim <file>	 Simulate the program.
+  com <file>	 Compile the program.
 `)
 
 }
 
 //program start
-function main(){
+async function main(){
 	argv.shift()
-	if (argv.length < 2){
-		usage()
+	const compName = argv.shift()
+	const comp = parsePath(compName)[0]
+	if (argv.length < 1){
+		usage(comp)
 		console.log("ERROR: no subcommand provided")
 		exit(1)
 	}
-	const compName = argv.shift()
+	
 	const subcommand = argv.shift()
 	const filePath = argv.shift()
 	if (subcommand == "sim"){
+		if (!filePath){
+			usage(comp)
+			console.log("ERROR: No input file provided.")
+			exit(1)
+		}
+		const program = await loadProgFromFile(filePath)
 		simProg(program)
 	} else
 	if (subcommand == "com"){
+		if (!filePath){
+			usage(comp)
+			console.log("ERROR: No input file provided.")
+			exit(1)
+		}
+		const program = await loadProgFromFile(filePath)
 		comProg(program, filePath)
 	} else {
 		console.log("ERROR:unknown command " + subcommand)
