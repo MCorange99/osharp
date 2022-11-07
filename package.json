@@ -6,6 +6,6 @@
   "license": "MIT",
   "dependencies": {
     "child_process": "^1.0.2",
-    "util": "^0.12.4"
+    "util": "^0.12.5"
   }
 }
